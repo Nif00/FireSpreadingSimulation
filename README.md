@@ -55,6 +55,8 @@ The raw Overpass road response is preserved at `data/raw/polatli_osm_roads.json`
 python -m fire_spread.web --dataset data/processed/polatli_network.json --buildings data/processed/polatli_buildings.json --host 127.0.0.1 --port 8000
 ```
 
+On Windows, double-click [`launch_polatli_ui.bat`](launch_polatli_ui.bat). It creates `.venv` on the first run, installs the project, starts the server with the real Polatlı network and building layer, and opens the browser automatically. Press `Ctrl+C` in the launcher window to stop it.
+
 Open `http://127.0.0.1:8000`. The UI reads the real local graph and building layer, allows a node ignition and parameterized run, supports orthographic and perspective projections, offers source-only or explicitly labeled 3 m massing fallback heights, shows activated links, ranks advancement scores, and downloads the exact JSON result returned by the simulation.
 
 
