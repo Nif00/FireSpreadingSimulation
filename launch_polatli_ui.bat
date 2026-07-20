@@ -2,19 +2,45 @@
 setlocal EnableExtensions
 cd /d "%~dp0"
 
-set "VENV_PYTHON=%~dp0.venv\Scripts\python.exe"
+set "VENV_DIR=%~dp0.venv"
+set "VENV_PYTHON=%VENV_DIR%\Scripts\python.exe"
+set "BOOTSTRAP_PYTHON="
 
-if not exist "%VENV_PYTHON%" (
-    echo Creating the local Python environment...
+rem Prefer the Python executable on PATH. The Windows py launcher may select an older install.
+where python >nul 2>&1
+if not errorlevel 1 (
+    python -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
+    if not errorlevel 1 set "BOOTSTRAP_PYTHON=python"
+)
+
+if not defined BOOTSTRAP_PYTHON (
     where py >nul 2>&1
     if not errorlevel 1 (
-        py -3 -m venv "%~dp0.venv"
-    ) else (
-        python -m venv "%~dp0.venv"
+        py -3.11 -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
+        if not errorlevel 1 set "BOOTSTRAP_PYTHON=py -3.11"
     )
+)
+
+if not defined BOOTSTRAP_PYTHON (
+    echo Python 3.11 or newer is required.
+    echo The Python on PATH and the py launcher did not provide a compatible interpreter.
+    pause
+    exit /b 1
+)
+
+if exist "%VENV_PYTHON%" (
+    "%VENV_PYTHON%" -c "import sys; raise SystemExit(0 if sys.version_info >= (3, 11) else 1)" >nul 2>&1
+    if errorlevel 1 (
+        echo Recreating the existing virtual environment with %BOOTSTRAP_PYTHON%...
+        rmdir /s /q "%VENV_DIR%"
+    )
+)
+
+if not exist "%VENV_PYTHON%" (
+    echo Creating the local Python environment with %BOOTSTRAP_PYTHON%...
+    %BOOTSTRAP_PYTHON% -m venv "%VENV_DIR%"
     if errorlevel 1 (
         echo Could not create the virtual environment.
-        echo Install Python 3.11 or newer and run this file again.
         pause
         exit /b 1
     )
