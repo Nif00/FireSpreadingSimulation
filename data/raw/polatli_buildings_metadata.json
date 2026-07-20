@@ -1,0 +1,32 @@
+{
+  "dataset": "Polatlı OSM building footprints and 3D tags",
+  "provider": "OpenStreetMap contributors",
+  "source_api": "OpenStreetMap API map endpoint",
+  "source_url": "https://api.openstreetmap.org/api/0.6/map",
+  "license": "OpenStreetMap data © OpenStreetMap contributors, ODbL 1.0",
+  "bbox": {
+    "south": 39.54,
+    "west": 32.08,
+    "north": 39.63,
+    "east": 32.22
+  },
+  "bbox_description": "Same Polatlı urban study area and immediate outskirts as the street graph",
+  "tile_grid": "12 direct OSM API XML map tiles; 0.03 latitude by 0.035 longitude each",
+  "raw_directory": "data/raw/polatli_osm_map_tiles",
+  "included_tags": [
+    "building",
+    "building:part",
+    "building:levels",
+    "height",
+    "min_height",
+    "roof:shape",
+    "roof:height",
+    "roof:levels"
+  ],
+  "origin": {
+    "latitude": 39.5852226,
+    "longitude": 32.1436995,
+    "source": "Nominatim town relation result"
+  },
+  "height_policy": "Use height tag when present; otherwise estimate building:levels at 3 metres per level; otherwise retain footprint with height 0 and mark footprint_only"
+}

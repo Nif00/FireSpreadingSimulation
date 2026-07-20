@@ -1,0 +1,63 @@
+{
+  "nodes": [
+    {"id": "A", "x": 0, "y": 0, "kind": "intersection"},
+    {"id": "B", "x": 40, "y": 0, "kind": "intersection"},
+    {"id": "C", "x": 80, "y": 0, "kind": "intersection"},
+    {"id": "D", "x": 40, "y": 35, "kind": "intersection"},
+    {"id": "E", "x": 80, "y": 35, "kind": "dead_end"}
+  ],
+  "edges": [
+    {
+      "id": "A-B",
+      "start": "A",
+      "end": "B",
+      "length_m": 40,
+      "width_m": 8,
+      "surface": "asphalt",
+      "slope": 0,
+      "bidirectional": true
+    },
+    {
+      "id": "B-C",
+      "start": "B",
+      "end": "C",
+      "length_m": 40,
+      "width_m": 6,
+      "surface": "paved",
+      "slope": 0.02,
+      "bidirectional": true
+    },
+    {
+      "id": "B-D",
+      "start": "B",
+      "end": "D",
+      "length_m": 35,
+      "width_m": 3,
+      "surface": "gravel",
+      "slope": 0.04,
+      "bidirectional": true,
+      "metadata": {"name": "Market Alley"}
+    },
+    {
+      "id": "D-E",
+      "start": "D",
+      "end": "E",
+      "length_m": 40,
+      "width_m": 2.5,
+      "surface": "vegetated",
+      "slope": 0,
+      "bidirectional": true,
+      "metadata": {"name": "Back-lot Passage"}
+    },
+    {
+      "id": "C-E",
+      "start": "C",
+      "end": "E",
+      "length_m": 35,
+      "width_m": 5,
+      "surface": "concrete",
+      "slope": -0.01,
+      "bidirectional": true
+    }
+  ]
+}

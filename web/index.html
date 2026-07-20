@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Urban Fire Spread / Polatlı</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-mark" aria-hidden="true"></div>
+    <div>
+      <p class="eyebrow">URBAN FIRE SPREAD</p>
+      <h1>Polatlı street network</h1>
+    </div>
+    <div id="service-state" class="service-state" aria-live="polite">Loading dataset</div>
+  </header>
+
+  <main class="workspace">
+    <section class="control-panel panel" aria-labelledby="scenario-heading">
+      <div class="section-heading">
+        <p class="eyebrow">SCENARIO</p>
+        <h2 id="scenario-heading">Run a propagation</h2>
+      </div>
+      <form id="scenario-form">
+        <label>
+          Ignition node ID
+          <input id="ignition" name="ignition" type="text" required spellcheck="false">
+        </label>
+        <button id="use-center" type="button" class="button secondary">Use study-area center</button>
+        <div class="field-grid">
+          <label>
+            Horizon (minutes)
+            <input id="horizon" name="horizon" type="number" min="0" step="1" value="60">
+          </label>
+          <label>
+            Base rate (m/min)
+            <input id="base-rate" name="base-rate" type="number" min="0.01" step="0.1" value="30">
+          </label>
+          <label>
+            Wind direction (degrees)
+            <input id="wind-direction" name="wind-direction" type="number" min="0" max="359.99" step="1" value="0">
+          </label>
+          <label>
+            Wind speed (m/s)
+            <input id="wind-speed" name="wind-speed" type="number" min="0" step="0.1" value="0">
+          </label>
+          <label>
+            Moisture (0–1)
+            <input id="moisture" name="moisture" type="number" min="0" max="1" step="0.05" value="0">
+          </label>
+        </div>
+        <button id="run-simulation" type="submit" class="button primary">Run simulation</button>
+      </form>
+      <div class="run-status" aria-live="polite">
+        <div class="status-line"><span id="run-label">Dataset is loading.</span><span id="run-detail"></span></div>
+        <div class="progress-track" aria-hidden="true"><div id="progress-fill"></div></div>
+      </div>
+      <p class="fine-print">The model uses the downloaded OSM road graph and explicit heuristic modifiers. It is for scenario exploration, not life-safety decisions.</p>
+    </section>
+
+    <section class="map-panel panel" aria-labelledby="map-heading">
+      <div class="section-heading inline-heading">
+        <div>
+          <p class="eyebrow">NETWORK VIEW</p>
+          <h2 id="map-heading">Advancing front</h2>
+        </div>
+        <div class="legend" aria-label="Map legend">
+          <span><i class="swatch network-swatch"></i>network</span>
+          <span><i class="swatch fire-swatch"></i>activated link</span>
+          <span><i class="swatch ignition-swatch"></i>ignition</span>
+        </div>
+      </div>
+      <div class="scene-controls" aria-label="3D view controls">
+        <label class="compact-control">
+          Projection
+          <select id="view-mode">
+            <option value="orthographic">Orthographic</option>
+            <option value="perspective">Perspective</option>
+          </select>
+        </label>
+        <label class="compact-control">
+          Unknown building heights
+          <select id="height-mode">
+            <option value="source">Source data only</option>
+            <option value="massing">Massing view (3 m fallback)</option>
+          </select>
+        </label>
+        <label class="compact-control">
+          Vertical exaggeration
+          <select id="vertical-scale">
+            <option value="1">1× true scale</option>
+            <option value="10">10×</option>
+            <option value="25" selected>25×</option>
+            <option value="50">50×</option>
+          </select>
+        </label>
+        <span id="scene-summary" class="scene-summary">Loading building layer…</span>
+      </div>
+      <div class="map-frame">
+        <canvas id="building-scene" width="1000" height="700" aria-hidden="true"></canvas>
+        <svg id="network-map" viewBox="0 0 1000 700" role="img" aria-label="Polatlı street network, fire front, and OSM building massing"></svg>
+        <div id="map-message" class="map-message">Loading network geometry…</div>
+      </div>
+      <p class="map-caption">2.5D scene from projected OSM geometry. Orthographic preserves scale; perspective adds depth scaling. Click a junction to set ignition.</p>
+    </section>
+
+    <section class="results-panel panel" aria-labelledby="results-heading">
+      <div class="section-heading inline-heading">
+        <div>
+          <p class="eyebrow">OUTPUT</p>
+          <h2 id="results-heading">Scenario result</h2>
+        </div>
+        <button id="download-result" type="button" class="button secondary" disabled>Download JSON</button>
+      </div>
+      <div class="summary-grid">
+        <div class="metric"><span>Reached nodes</span><strong id="reached-nodes">—</strong></div>
+        <div class="metric"><span>Activated links</span><strong id="activated-links">—</strong></div>
+        <div class="metric"><span>Horizon</span><strong id="result-horizon">—</strong></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <caption>Activated links with the highest modeled advancement potential</caption>
+          <thead><tr><th>Link</th><th>Score</th><th>Front start</th><th>Completion</th></tr></thead>
+          <tbody id="hotspot-rows"><tr><td colspan="4" class="empty">Run a scenario to populate hotspots.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <aside class="data-panel panel" aria-labelledby="data-heading">
+      <div class="section-heading">
+        <p class="eyebrow">DATASET</p>
+        <h2 id="data-heading">Source record</h2>
+      </div>
+      <dl class="metadata-list">
+        <div><dt>File</dt><dd id="dataset-file">—</dd></div>
+        <div><dt>Nodes</dt><dd id="dataset-nodes">—</dd></div>
+        <div><dt>Links</dt><dd id="dataset-edges">—</dd></div>
+        <div><dt>Buildings</dt><dd id="dataset-buildings">—</dd></div>
+        <div><dt>Heights</dt><dd id="dataset-heights">—</dd></div>
+        <div><dt>Source</dt><dd id="dataset-source">—</dd></div>
+        <div><dt>License</dt><dd id="dataset-license">—</dd></div>
+        <div><dt>Coverage</dt><dd id="dataset-bbox">—</dd></div>
+      </dl>
+      <p class="attribution">Street geometry © OpenStreetMap contributors. Data is retrieved through Overpass and preserved locally with provenance.</p>
+    </aside>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>

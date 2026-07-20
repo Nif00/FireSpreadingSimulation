@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "urban-fire-spread"
+version = "0.1.0"
+description = "Graph-based baseline simulator for urban fire-front propagation"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "Urban Fire Spread contributors"}]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+fire-spread = "fire_spread.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

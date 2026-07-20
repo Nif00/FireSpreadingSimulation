@@ -1,0 +1,22 @@
+{
+  "dataset": "Polatlı urban street and alley network",
+  "provider": "OpenStreetMap contributors",
+  "source_api": "Overpass API",
+  "source_url": "https://overpass-api.de/api/interpreter",
+  "nominatim_reference": "https://nominatim.openstreetmap.org/search?q=Polatl%C4%B1%2C%20Ankara%2C%20Turkey&format=jsonv2&addressdetails=1&limit=5",
+  "license": "OpenStreetMap data © OpenStreetMap contributors, ODbL 1.0",
+  "bbox": {
+    "south": 39.54,
+    "west": 32.08,
+    "north": 39.63,
+    "east": 32.22
+  },
+  "bbox_description": "Polatlı urban study area and immediate outskirts; not the full administrative district",
+  "query": "[out:json][timeout:180]; ( way[highway~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|service|road|track|pedestrian)$\"](39.54,32.08,39.63,32.22); ); out body geom;",
+  "origin": {
+    "latitude": 39.5852226,
+    "longitude": 32.1436995,
+    "source": "Nominatim town relation result"
+  },
+  "downloaded_for": "urban-fire-spread baseline network"
+}
