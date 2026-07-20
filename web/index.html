@@ -95,14 +95,14 @@
             <option value="50">50×</option>
           </select>
         </label>
+        <button id="reset-view" type="button" class="button secondary compact-button">Reset view</button>
         <span id="scene-summary" class="scene-summary">Loading building layer…</span>
       </div>
       <div class="map-frame">
         <canvas id="building-scene" width="1000" height="700" aria-hidden="true"></canvas>
         <svg id="network-map" viewBox="0 0 1000 700" role="img" aria-label="Polatlı street network, fire front, and OSM building massing"></svg>
         <div id="map-message" class="map-message">Loading network geometry…</div>
-      </div>
-      <p class="map-caption">2.5D scene from projected OSM geometry. Orthographic preserves scale; perspective adds depth scaling. Click a junction to set ignition.</p>
+      <p class="map-caption">2.5D scene from projected OSM geometry. Wheel to zoom, drag to pan, Shift-drag or right-drag to rotate, and use Reset view to return to the fitted scene.</p>
     </section>
 
     <section class="results-panel panel" aria-labelledby="results-heading">

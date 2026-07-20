@@ -61,6 +61,8 @@ The launcher intentionally prefers the `python` command on `PATH`; `py -3` can s
 
 Open `http://127.0.0.1:8000`. The UI reads the real local graph and building layer, allows a node ignition and parameterized run, supports orthographic and perspective projections, offers source-only or explicitly labeled 3 m massing fallback heights, shows activated links, ranks advancement scores, and downloads the exact JSON result returned by the simulation.
 
+Map navigation: use the mouse wheel to zoom, drag with the left button to pan, and hold `Shift` while dragging (or use the right mouse button) to rotate. `Reset view` restores the fitted scene.
+
 
 Vertical exaggeration is a visual control only. It changes how height is displayed, not the stored OSM heights or fire propagation calculations.
 ## Public data sources

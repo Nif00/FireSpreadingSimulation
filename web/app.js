@@ -8,6 +8,14 @@ const state = {
   projection: null,
   heightMode: "source",
   verticalScale: 25,
+  camera: {
+    yaw: -0.68,
+    pitch: 0.62,
+    zoom: 1,
+    panX: 0,
+    panY: 0,
+  },
+  gesture: null,
 };
 
 const SCENE_WIDTH = 1000;
@@ -67,8 +75,7 @@ function effectiveBuildingHeight(building) {
 }
 
 function createSceneProjection() {
-  const yaw = -0.68;
-  const pitch = 0.62;
+  const {yaw, pitch} = state.camera;
   let minWorldX = Infinity;
   let maxWorldX = -Infinity;
   let minWorldY = Infinity;
@@ -100,10 +107,8 @@ function createSceneProjection() {
   let maxX = -Infinity;
   let minY = Infinity;
   let maxY = -Infinity;
-  const samples = [];
   const includeSample = (x, y, z) => {
     const sample = rawPoint(x, y, z);
-    samples.push(sample);
     minX = Math.min(minX, sample.x);
     maxX = Math.max(maxX, sample.x);
     minY = Math.min(minY, sample.y);
@@ -121,14 +126,16 @@ function createSceneProjection() {
   const pad = 30;
   const spanX = Math.max(maxX - minX, 1);
   const spanY = Math.max(maxY - minY, 1);
-  const scale = Math.min((SCENE_WIDTH - 2 * pad) / spanX, (SCENE_HEIGHT - 2 * pad) / spanY);
-  const offsetX = pad + (SCENE_WIDTH - 2 * pad - spanX * scale) / 2;
-  const offsetY = pad + (SCENE_HEIGHT - 2 * pad - spanY * scale) / 2;
+  const scale = Math.min((SCENE_WIDTH - 2 * pad) / spanX, (SCENE_HEIGHT - 2 * pad) / spanY) * state.camera.zoom;
+  const centerX = SCENE_WIDTH / 2 + state.camera.panX;
+  const centerY = SCENE_HEIGHT / 2 + state.camera.panY;
+  const centerRawX = (minX + maxX) / 2;
+  const centerRawY = (minY + maxY) / 2;
   return (x, y, z = 0) => {
     const raw = rawPoint(x, y, z);
     return {
-      x: offsetX + (raw.x - minX) * scale,
-      y: SCENE_HEIGHT - (offsetY + (raw.y - minY) * scale),
+      x: centerX + (raw.x - centerRawX) * scale,
+      y: centerY - (raw.y - centerRawY) * scale,
       depth: raw.depth,
     };
   };
@@ -212,6 +219,80 @@ function updateSceneGeometry() {
     circle.setAttribute("cy", point.y);
   }
   drawBuildings();
+}
+
+function clamp(value, minimum, maximum) {
+  return Math.max(minimum, Math.min(maximum, value));
+}
+
+function scenePoint(event) {
+  const canvas = $("building-scene");
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (event.clientX - rect.left) * SCENE_WIDTH / rect.width,
+    y: (event.clientY - rect.top) * SCENE_HEIGHT / rect.height,
+  };
+}
+
+function resetSceneView() {
+  state.camera = {yaw: -0.68, pitch: 0.62, zoom: 1, panX: 0, panY: 0};
+  updateSceneGeometry();
+  updateSceneSummary();
+}
+
+function beginSceneGesture(event) {
+  if (event.button !== 0 && event.button !== 2) return;
+  const point = scenePoint(event);
+  state.gesture = {
+    pointerId: event.pointerId,
+    mode: event.shiftKey || event.button === 2 ? "rotate" : "pan",
+    x: point.x,
+    y: point.y,
+  };
+  event.currentTarget.setPointerCapture(event.pointerId);
+  event.currentTarget.classList.add("dragging");
+  event.preventDefault();
+}
+
+function moveSceneGesture(event) {
+  if (!state.gesture || state.gesture.pointerId !== event.pointerId) return;
+  const point = scenePoint(event);
+  const deltaX = point.x - state.gesture.x;
+  const deltaY = point.y - state.gesture.y;
+  if (state.gesture.mode === "rotate") {
+    state.camera.yaw += deltaX * 0.01;
+    state.camera.pitch = clamp(state.camera.pitch + deltaY * 0.008, 0.18, 1.35);
+  } else {
+    state.camera.panX += deltaX;
+    state.camera.panY += deltaY;
+  }
+  state.gesture.x = point.x;
+  state.gesture.y = point.y;
+  updateSceneGeometry();
+  updateSceneSummary();
+  event.preventDefault();
+}
+
+function endSceneGesture(event) {
+  if (!state.gesture || state.gesture.pointerId !== event.pointerId) return;
+  if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+  state.gesture = null;
+  event.currentTarget.classList.remove("dragging");
+}
+
+function zoomScene(event) {
+  event.preventDefault();
+  const cursor = scenePoint(event);
+  const oldZoom = state.camera.zoom;
+  const nextZoom = clamp(oldZoom * Math.exp(-event.deltaY * 0.001), 0.25, 8);
+  const factor = nextZoom / oldZoom;
+  state.camera.zoom = nextZoom;
+  state.camera.panX = cursor.x - (cursor.x - state.camera.panX) * factor;
+  state.camera.panY = cursor.y - (cursor.y - state.camera.panY) * factor;
+  updateSceneGeometry();
+  updateSceneSummary();
 }
 
 function renderNetwork() {
@@ -345,13 +426,18 @@ function downloadResult() {
   URL.revokeObjectURL(url);
 }
 
+function updateSceneSummary() {
+  const mode = $("view-mode").value;
+  const heightText = state.heightMode === "massing" ? "3 m fallback enabled" : "source heights only";
+  const yawDegrees = Math.round(((state.camera.yaw * 180 / Math.PI) % 360 + 360) % 360);
+  $("scene-summary").textContent = `${mode} / ${state.camera.zoom.toFixed(2)}× zoom / ${state.verticalScale}× vertical / ${heightText} / yaw ${yawDegrees}°`;
+}
+
 function setSceneMode() {
   state.heightMode = $("height-mode").value;
   state.verticalScale = Number($("vertical-scale").value);
   updateSceneGeometry();
-  const mode = $("view-mode").value;
-  const heightText = state.heightMode === "massing" ? "3 m fallback enabled" : "source heights only";
-  $("scene-summary").textContent = `${mode} / ${state.verticalScale}× vertical / ${heightText} / ${Number(state.status?.buildings || 0).toLocaleString()} footprints`;
+  updateSceneSummary();
 }
 
 async function initialize() {
@@ -383,4 +469,12 @@ $("view-mode").addEventListener("change", setSceneMode);
 $("height-mode").addEventListener("change", setSceneMode);
 $("vertical-scale").addEventListener("change", setSceneMode);
 $("download-result").addEventListener("click", downloadResult);
+const sceneCanvas = $("building-scene");
+sceneCanvas.addEventListener("pointerdown", beginSceneGesture);
+sceneCanvas.addEventListener("pointermove", moveSceneGesture);
+sceneCanvas.addEventListener("pointerup", endSceneGesture);
+sceneCanvas.addEventListener("pointercancel", endSceneGesture);
+sceneCanvas.addEventListener("wheel", zoomScene, {passive: false});
+sceneCanvas.addEventListener("contextmenu", (event) => event.preventDefault());
+$("reset-view").addEventListener("click", resetSceneView);
 initialize();
