@@ -94,6 +94,7 @@ def edge_speed_m_per_min(
     source_node: str,
     target_node: str,
     parameters: FireParameters,
+    wind_field: Any | None = None,
 ) -> float:
     """Return the heuristic spread speed for one oriented edge traversal.
 
@@ -111,11 +112,17 @@ def edge_speed_m_per_min(
     source = network.nodes[source_node]
     target = network.nodes[target_node]
     bearing = _bearing_deg(source.x, source.y, target.x, target.y)
-    alignment = _wind_alignment(bearing, parameters.wind_direction_deg)
+    wind_speed_mps = parameters.wind_speed_mps
+    wind_direction_deg = parameters.wind_direction_deg
+    if wind_field is not None:
+        sample = wind_field.sample_edge(source.x, source.y, target.x, target.y)
+        wind_speed_mps = sample.speed_mps
+        wind_direction_deg = sample.direction_deg
+    alignment = _wind_alignment(bearing, wind_direction_deg)
 
     wind_factor = max(
         0.35,
-        1.0 + 0.12 * min(parameters.wind_speed_mps, 20.0) * alignment,
+        1.0 + 0.12 * min(wind_speed_mps, 20.0) * alignment,
     )
     slope_factor = max(0.50, min(1.80, 1.0 + 0.80 * oriented_slope))
     width_factor = max(0.75, min(1.35, (6.0 / edge.width_m) ** 0.20))
@@ -134,11 +141,15 @@ def _edge_score(
     network: CityNetwork,
     edge: Edge,
     parameters: FireParameters,
+    wind_field: Any | None = None,
 ) -> float:
     directions = [(edge.start, edge.end)]
     if edge.bidirectional:
         directions.append((edge.end, edge.start))
-    return max(edge_speed_m_per_min(network, edge, source, target, parameters) for source, target in directions)
+    return max(
+        edge_speed_m_per_min(network, edge, source, target, parameters, wind_field)
+        for source, target in directions
+    )
 
 
 def simulate(
@@ -146,6 +157,7 @@ def simulate(
     ignition_nodes: list[str] | tuple[str, ...],
     parameters: FireParameters | None = None,
     horizon_minutes: float = 60.0,
+    wind_field: Any | None = None,
 ) -> SimulationResult:
     """Propagate the front from ignition nodes until the time horizon."""
     if horizon_minutes < 0:
@@ -176,7 +188,7 @@ def simulate(
             if edge.id in started_edges:
                 continue
             started_edges.add(edge.id)
-            speed = edge_speed_m_per_min(network, edge, node_id, target_id, params)
+            speed = edge_speed_m_per_min(network, edge, node_id, target_id, params, wind_field)
             travel_minutes = edge.length_m / speed
             completion = arrival + travel_minutes
             edge_arrivals.append(
@@ -199,7 +211,7 @@ def simulate(
 
     edge_arrivals.sort(key=lambda item: (item.start_minute, item.edge_id, item.from_node, item.to_node))
     raw_scores = {
-        edge.id: _edge_score(network, edge, params)
+        edge.id: _edge_score(network, edge, params, wind_field)
         for edge in sorted(network.edges.values(), key=lambda item: item.id)
     }
     minimum = min(raw_scores.values(), default=0.0)

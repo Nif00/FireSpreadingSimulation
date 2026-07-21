@@ -32,7 +32,7 @@ SimulationResult -> ranked hotspots / downloadable JSON / restrained local web U
 - `fire_spread.buildings`: converts preserved direct OSM XML map tiles into projected building footprints and height-confidence records.
 - `fire_spread.propagation`: configurable edge traversal and event-driven spread.
 - `fire_spread.cli`: a small command-line entry point for repeatable runs.
-- `fire_spread.web`: local HTTP API and small static UI for scenario controls, network view, 2.5D building rendering, and hotspot output.
+- `fire_spread.web`: local HTTP API and small static UI for scenario controls, interactive 3D network/building rendering, and hotspot output.
 - `tests`: contract tests for graph validation, directional links, modifiers, horizon handling, deterministic results, OSM conversion, and building provenance.
 - `data/raw`: preserved source city files and provenance records.
 - `data/processed`: normalized network artifacts and derived simulation outputs.
@@ -60,9 +60,18 @@ SimulationResult -> ranked hotspots / downloadable JSON / restrained local web U
 }
 ```
 
-Coordinates are projected/local meters in normalized data. The Polatlı adapter uses a local equirectangular projection centered on the Nominatim town-relation result, with the source WGS84 coordinates retained in node metadata.
+Coordinates are projected/local meters in normalized data. The Manhattan and Polatlı adapters use a local equirectangular projection centered on each study area, with the source WGS84 coordinates retained in node metadata.
 
-## Real starting dataset: Polatlı, Ankara
+## Current starting dataset: Manhattan Island, New York
+
+- Source: OpenStreetMap road and building geometry retrieved from the public Overpass API.
+- Coverage: `40.7000,-74.0200` to `40.8825,-73.9065`, covering Manhattan Island and its immediate shoreline.
+- Normalized graph: 147,121 nodes and 161,601 links from 30,935 highway ways.
+- Building layer: 157,202 OSM building/building-part footprints; 116,917 have explicit height tags, 2,171 have level estimates, and 38,114 are footprint-only.
+- Files: `data/raw/manhattan_osm_roads.json`, `data/raw/manhattan_osm_buildings.json`, `data/raw/manhattan_metadata.json`, `data/raw/manhattan_buildings_metadata.json`, `data/processed/manhattan_network.json`, and `data/processed/manhattan_buildings.json`.
+- License: OpenStreetMap data © OpenStreetMap contributors, ODbL 1.0. Query, coverage, origin, and height policy are preserved in the metadata files and normalized outputs.
+
+## Legacy regression dataset: Polatlı, Ankara
 
 - Source: OpenStreetMap road geometry retrieved from the public Overpass API.
 - Coverage: `39.54,32.08` to `39.63,32.22`, covering the Polatlı urban area and immediate outskirts rather than the full administrative district.
@@ -75,17 +84,17 @@ Coordinates are projected/local meters in normalized data. The Polatlı adapter 
 
 ## Current boundary decision
 
-The street graph remains the only spatial input to fire propagation. The OSM building layer is currently presentation-only: it drives the 2.5D viewer but does not alter spread speed, connectivity, or hotspot scores.
+The street graph remains the connectivity input to fire propagation. The web UI now offers an experimental QUIC-URB-inspired urban-wind layer: OSM building footprints are rasterized into a regular obstacle grid, and sampled local wind speed/direction alter edge spread speed. This is a transparent diagnostic heuristic, not a fluid solver. The web result also derives an adjacency layer that marks buildings near an activated road segment or ignition node as burning for 3D visualization.
 
-The viewer exposes orthographic and perspective projections plus a clearly labeled vertical exaggeration control. Unknown building heights remain flat in source-only mode; the optional 3 m massing fallback is a visualization assumption, not a measured height.
+The viewer exposes orthographic and perspective 3D cameras plus a clearly labeled vertical exaggeration control. Unknown building heights remain flat in source-only mode; the optional 3 m massing fallback is a visualization assumption, not a measured height. OSM `height`, `building:levels`, `min_height`, and roof metadata are preserved for rendering; sparse OSM node `ele` values are also carried when present.
 
 ## Simulation phases
 
 1. **Baseline graph:** load and validate a normalized network; reject missing endpoints, duplicate IDs, non-positive lengths, and invalid parameter ranges.
 2. **Deterministic propagation:** simulate one or more ignition nodes over a finite time horizon; preserve earliest arrival per node and link interval.
 3. **Hotspot ranking:** rank links by normalized advancement score and nodes by arrival/exposure metrics.
-4. **City ingestion:** retrieve and preserve the Polatlı OSM extract, reproject to local meters, split ways at geometry vertices, preserve one-way/surface/width tags, and validate topology.
-5. **Current web UI:** run real scenarios against the Polatlı graph, show the full network and activated links, and allow JSON result download.
+4. **City ingestion:** retrieve and preserve a city OSM extract, reproject to local meters, split ways at geometry vertices, preserve one-way/surface/width tags, and validate topology.
+5. **Current web UI:** run real scenarios against the Manhattan graph, show the detailed 3D building layer, activated links, and local flow-vector fields, and allow JSON result download.
 6. **Calibration:** compare modeled travel times and spread patterns against historical incidents or expert-labelled scenarios; keep calibrated coefficients versioned.
 7. **Scenario analysis:** support multiple ignitions, barriers/closures, time-varying wind, fuel/moisture rasters, and repeated stochastic runs only when validated data exists. Building footprints and 3D tags may become simulation inputs only after their effect is specified and validated.
 8. **Presentation:** export GeoJSON and extend the current map view with a timestamp slider and richer city layers after the baseline is validated.
@@ -100,9 +109,9 @@ The viewer exposes orthographic and perspective projections plus a clearly label
 
 ## Definition of done for the current baseline
 
-- The preserved Polatlı OSM road and building extracts load from disk through source-specific adapters.
-- A normalized Polatlı graph and building layer are available with provenance, local-meter coordinates, and height-source labels.
+- The preserved Manhattan OSM road and building extracts load from disk through source-specific adapters.
+- A normalized Manhattan graph and detailed building layer are available with provenance, local-meter coordinates, and height-source labels.
 - A CLI and local web UI run real propagation scenarios against the road graph.
-- The UI offers orthographic and perspective 2.5D views without feeding unvalidated building heights into propagation.
+- The UI offers orthographic and perspective 3D views without feeding unvalidated building heights into propagation.
 - Outputs include arrival times, activated links, ranked advancement scores, and dataset/scenario provenance.
 - Tests cover the observable baseline contracts, OSM conversion, and building conversion boundaries.
