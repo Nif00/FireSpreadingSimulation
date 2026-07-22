@@ -1,0 +1,21 @@
+{
+  "dataset": "Manhattan Island urban street network",
+  "provider": "OpenStreetMap contributors",
+  "source_api": "Overpass API",
+  "source_url": "https://overpass.kumi.systems/api/interpreter",
+  "license": "OpenStreetMap data © OpenStreetMap contributors, ODbL 1.0",
+  "bbox": {
+    "south": 40.7,
+    "west": -74.02,
+    "north": 40.8825,
+    "east": -73.9065
+  },
+  "bbox_description": "Manhattan Island and immediate shoreline study area",
+  "query": "[out:json][timeout:300];way[highway~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|service|road|track|pedestrian)$\"](40.7000,-74.0200,40.8825,-73.9065);out body geom;",
+  "origin": {
+    "latitude": 40.79125,
+    "longitude": -73.96325,
+    "source": "center of the Manhattan Island study bbox"
+  },
+  "downloaded_for": "urban-fire-spread detailed city replacement"
+}

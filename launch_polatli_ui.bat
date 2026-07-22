@@ -54,16 +54,16 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Starting the Polatli fire-spread UI at http://127.0.0.1:8000
+echo Starting the Manhattan Island fire-spread UI at http://127.0.0.1:8000
 start "" /b powershell -NoProfile -WindowStyle Hidden -Command "Start-Sleep -Seconds 2; Start-Process 'http://127.0.0.1:8000'"
 "%VENV_PYTHON%" -m fire_spread.web ^
-    --dataset "%~dp0data\processed\polatli_network.json" ^
-    --buildings "%~dp0data\processed\polatli_buildings.json" ^
+    --dataset "%~dp0data\processed\manhattan_network.json" ^
+    --buildings "%~dp0data\processed\manhattan_buildings.json" ^
     --host 127.0.0.1 ^
     --port 8000
 
 set "EXIT_CODE=%ERRORLEVEL%"
 echo.
-echo Polatli UI stopped with exit code %EXIT_CODE%.
+echo Manhattan Island UI stopped with exit code %EXIT_CODE%.
 pause
 exit /b %EXIT_CODE%

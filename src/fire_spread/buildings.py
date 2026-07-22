@@ -1,4 +1,4 @@
-"""Convert OSM building footprints and 3D tags into a 2.5D scene layer."""
+"""Convert OSM building footprints and height tags into a 3D scene layer."""
 
 from __future__ import annotations
 
@@ -175,6 +175,116 @@ def normalize_buildings(
     }
 
 
+def normalize_buildings_from_osm(
+    payload: Mapping[str, Any],
+    *,
+    origin_lat: float,
+    origin_lon: float,
+    source: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Normalize Overpass JSON building ways with inline geometry."""
+    elements = payload.get("elements", [])
+    if not isinstance(elements, list):
+        raise ValueError("OSM payload elements must be a list")
+    normalized: list[dict[str, Any]] = []
+    height_counts = {"height_tag": 0, "levels_estimate": 0, "footprint_only": 0}
+    for element in elements:
+        if not isinstance(element, Mapping) or element.get("type") != "way":
+            continue
+        tags = element.get("tags", {})
+        if not isinstance(tags, Mapping) or ("building" not in tags and "building:part" not in tags):
+            continue
+        geometry = element.get("geometry", [])
+        coordinates = [
+            (float(point["lat"]), float(point["lon"]))
+            for point in geometry
+            if isinstance(point, Mapping) and "lat" in point and "lon" in point
+        ]
+        if len(coordinates) < 3:
+            continue
+        if coordinates[0] != coordinates[-1]:
+            coordinates.append(coordinates[0])
+        polygon = [_local_xy(lat, lon, origin_lat, origin_lon) for lat, lon in coordinates]
+        area = _area_m2(polygon[:-1] if polygon[0] == polygon[-1] else polygon)
+        if area < 1.0:
+            continue
+        height_m, height_source, levels = _height(tags)
+        height_counts[height_source] += 1
+        way_id = str(element.get("id", "unknown"))
+        normalized.append(
+            {
+                "id": f"osm:building:{way_id}",
+                "polygon": [[x, y] for x, y in polygon[:-1]],
+                "area_m2": area,
+                "height_m": height_m,
+                "min_height_m": _positive_number(tags.get("min_height")) or 0.0,
+                "height_source": height_source,
+                "levels": levels,
+                "building": tags.get("building"),
+                "building_part": tags.get("building:part"),
+                "roof_shape": tags.get("roof:shape"),
+                "roof_height_m": _positive_number(tags.get("roof:height")),
+                "tags": {
+                    key: tags[key]
+                    for key in (
+                        "building",
+                        "building:part",
+                        "building:levels",
+                        "height",
+                        "min_height",
+                        "roof:shape",
+                        "roof:height",
+                        "roof:levels",
+                        "name",
+                    )
+                    if key in tags
+                },
+            }
+        )
+    source_record = dict(source)
+    source_record.update(
+        {
+            "origin_latitude": origin_lat,
+            "origin_longitude": origin_lon,
+            "osm_element_count": len(elements),
+            "building_count": len(normalized),
+            "height_source_counts": height_counts,
+        }
+    )
+    return {
+        "schema_version": 1,
+        "coordinate_reference": {
+            "system": "local equirectangular projection",
+            "units": "meters",
+            "origin_latitude": origin_lat,
+            "origin_longitude": origin_lon,
+            "source_crs": "EPSG:4326",
+        },
+        "source": source_record,
+        "buildings": normalized,
+    }
+
+
+def convert_osm_json(
+    source_path: str | Path,
+    output_path: str | Path,
+    *,
+    origin_lat: float,
+    origin_lon: float,
+    source_metadata: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Convert an Overpass JSON building extract into the 3D layer contract."""
+    payload = json.loads(Path(source_path).read_text(encoding="utf-8"))
+    normalized = normalize_buildings_from_osm(
+        payload,
+        origin_lat=origin_lat,
+        origin_lon=origin_lon,
+        source=source_metadata,
+    )
+    Path(output_path).write_text(json.dumps(normalized, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return normalized
+
+
 def convert_directory(
     tile_dir: str | Path,
     output_path: str | Path,
@@ -197,7 +307,7 @@ def convert_directory(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Convert OSM XML map tiles to a 2.5D building layer")
+    parser = argparse.ArgumentParser(description="Convert OSM XML map tiles to a 3D building layer")
     parser.add_argument("tile_dir")
     parser.add_argument("output")
     parser.add_argument("--origin-latitude", type=float, required=True)

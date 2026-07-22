@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Urban Fire Spread / Polatlı</title>
+  <title>Urban Fire Spread / Manhattan Island 3D</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -11,7 +11,7 @@
     <div class="brand-mark" aria-hidden="true"></div>
     <div>
       <p class="eyebrow">URBAN FIRE SPREAD</p>
-      <h1>Polatlı street network</h1>
+      <h1>Manhattan Island 3D street network</h1>
     </div>
     <div id="service-state" class="service-state" aria-live="polite">Loading dataset</div>
   </header>
@@ -50,13 +50,28 @@
             <input id="moisture" name="moisture" type="number" min="0" max="1" step="0.05" value="0">
           </label>
         </div>
+        <div class="model-options">
+          <label class="check-control">
+            <input id="urban-wind" name="urban-wind" type="checkbox" checked>
+            QUIC-URB-inspired urban wind
+          </label>
+          <label class="compact-control">
+            Wind grid
+            <select id="urban-wind-cell">
+              <option value="25">25 m</option>
+              <option value="50" selected>50 m</option>
+              <option value="100">100 m</option>
+              <option value="200">200 m</option>
+            </select>
+          </label>
+        </div>
         <button id="run-simulation" type="submit" class="button primary">Run simulation</button>
       </form>
       <div class="run-status" aria-live="polite">
         <div class="status-line"><span id="run-label">Dataset is loading.</span><span id="run-detail"></span></div>
         <div class="progress-track" aria-hidden="true"><div id="progress-fill"></div></div>
       </div>
-      <p class="fine-print">The model uses the downloaded OSM road graph and explicit heuristic modifiers. It is for scenario exploration, not life-safety decisions.</p>
+      <p class="fine-print">The experimental wind layer rasterizes OSM building massing to steer and slow the prescribed wind. It is for scenario exploration, not life-safety decisions.</p>
     </section>
 
     <section class="map-panel panel" aria-labelledby="map-heading">
@@ -68,22 +83,24 @@
         <div class="legend" aria-label="Map legend">
           <span><i class="swatch network-swatch"></i>network</span>
           <span><i class="swatch fire-swatch"></i>activated link</span>
+          <span><i class="swatch building-fire-swatch"></i>burning building</span>
+          <span><i class="swatch flow-swatch"></i>urban flow line</span>
           <span><i class="swatch ignition-swatch"></i>ignition</span>
         </div>
       </div>
       <div class="scene-controls" aria-label="3D view controls">
         <label class="compact-control">
-          Projection
+          Camera
           <select id="view-mode">
-            <option value="orthographic">Orthographic</option>
             <option value="perspective">Perspective</option>
+            <option value="orthographic">Orthographic</option>
           </select>
         </label>
         <label class="compact-control">
           Unknown building heights
           <select id="height-mode">
+            <option value="massing" selected>Massing view (3 m fallback)</option>
             <option value="source">Source data only</option>
-            <option value="massing">Massing view (3 m fallback)</option>
           </select>
         </label>
         <label class="compact-control">
@@ -96,13 +113,29 @@
           </select>
         </label>
         <button id="reset-view" type="button" class="button secondary compact-button">Reset view</button>
-        <span id="scene-summary" class="scene-summary">Loading building layer…</span>
+        <label class="compact-control">
+          Flow radius
+          <select id="flow-radius">
+            <option value="1000">1 km</option>
+            <option value="2000" selected>2 km</option>
+            <option value="5000">5 km</option>
+          </select>
+        </label>
+        <button id="run-flow" type="button" class="button secondary compact-button" disabled>Run flow around selected node</button>
+        <span id="flow-status" class="flow-status">Select a node to run flow</span>
+        <span id="scene-summary" class="scene-summary">Loading 3D scene…</span>
       </div>
       <div class="map-frame">
-        <canvas id="building-scene" width="1000" height="700" aria-hidden="true"></canvas>
-        <svg id="network-map" viewBox="0 0 1000 700" role="img" aria-label="Polatlı street network, fire front, and OSM building massing"></svg>
+        <div id="node-selection" class="node-selection" aria-live="polite">No node selected</div>
+        <div id="selected-node-pin" class="selected-node-pin is-hidden" aria-hidden="true">
+          <span class="selected-node-label"></span>
+          <span class="selected-node-head"></span>
+          <span class="selected-node-stem"></span>
+        </div>
+        <canvas id="building-scene" tabindex="0" role="img" aria-label="Interactive 3D Manhattan Island street network with OSM building heights and fire front"></canvas>
         <div id="map-message" class="map-message">Loading network geometry…</div>
-      <p class="map-caption">2.5D scene from projected OSM geometry. Wheel to zoom, drag to pan, Shift-drag or right-drag to rotate, and use Reset view to return to the fitted scene.</p>
+      </div>
+      <p class="map-caption">3D OSM scene. Select a node, set wind speed/direction, then run flow to draw the local urban vector field. Wheel or E/Q to zoom, drag to orbit, Shift-drag/right-drag or WASD to pan, and use arrow keys to rotate.</p>
     </section>
 
     <section class="results-panel panel" aria-labelledby="results-heading">
@@ -116,6 +149,7 @@
       <div class="summary-grid">
         <div class="metric"><span>Reached nodes</span><strong id="reached-nodes">—</strong></div>
         <div class="metric"><span>Activated links</span><strong id="activated-links">—</strong></div>
+        <div class="metric"><span>Burning buildings</span><strong id="burning-buildings">—</strong></div>
         <div class="metric"><span>Horizon</span><strong id="result-horizon">—</strong></div>
       </div>
       <div class="table-wrap">
@@ -141,10 +175,14 @@
         <div><dt>Source</dt><dd id="dataset-source">—</dd></div>
         <div><dt>License</dt><dd id="dataset-license">—</dd></div>
         <div><dt>Coverage</dt><dd id="dataset-bbox">—</dd></div>
+        <div><dt>Terrain</dt><dd id="terrain-status">—</dd></div>
+        <div><dt>Wind model</dt><dd id="wind-model-status">—</dd></div>
       </dl>
       <p class="attribution">Street geometry © OpenStreetMap contributors. Data is retrieved through Overpass and preserved locally with provenance.</p>
     </aside>
+
   </main>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

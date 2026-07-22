@@ -137,11 +137,13 @@ def network_from_osm(
             node_id = _coordinate_key(lat, lon)
             if node_id not in nodes:
                 x, y = _local_xy(lat, lon, origin_lat, origin_lon)
+                elevation = _numeric_tag(point.get("ele") or point.get("elevation"))
                 nodes[node_id] = Node(
                     id=node_id,
                     x=x,
                     y=y,
                     kind="road_node",
+                    elevation_m=elevation,
                     metadata={"latitude": lat, "longitude": lon},
                 )
 

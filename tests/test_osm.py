@@ -59,6 +59,26 @@ class OsmConversionTests(unittest.TestCase):
         shared_id = "osm:39.0000000:32.0010000"
         self.assertEqual(len(graph.neighbors(shared_id)), 2)
 
+    def test_optional_osm_elevation_is_preserved_on_normalized_nodes(self):
+        payload = {
+            "elements": [
+                {
+                    "type": "way",
+                    "id": 3,
+                    "tags": {"highway": "service"},
+                    "geometry": [
+                        {"lat": 39.0, "lon": 32.0, "ele": "925 m"},
+                        {"lat": 39.0, "lon": 32.001, "ele": "926"},
+                    ],
+                }
+            ]
+        }
+
+        graph = network_from_osm(payload, origin_lat=39.0, origin_lon=32.0)
+
+        self.assertEqual(graph.nodes["osm:39.0000000:32.0000000"].elevation_m, 925.0)
+        self.assertEqual(graph.nodes["osm:39.0000000:32.0010000"].elevation_m, 926.0)
+
 
 if __name__ == "__main__":
     unittest.main()
